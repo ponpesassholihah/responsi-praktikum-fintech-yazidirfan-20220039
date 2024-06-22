@@ -33,12 +33,12 @@ st.write("""
 Shown are the stock predictions for the next 20 days.
 """)
 
-# Normalisasi data untuk LSTM
+# Normalization for LSTM
 min_close = input_df['Close'].min()
 max_close = input_df['Close'].max()
 input_df['Close_normalized'] = (input_df['Close'] - min_close) / (max_close - min_close)
 
-# Persiapan data untuk LSTM
+# Prepare data for LSTM
 def prepare_data(data, n_steps):
     X, y = [], []
     for i in range(len(data)):
@@ -50,38 +50,40 @@ def prepare_data(data, n_steps):
         y.append(seq_y)
     return np.array(X), np.array(y)
 
-# Ubah dataframe menjadi numpy array untuk model LSTM
+# Change dataframe to numpy array for LSTM model
 data_for_lstm = input_df['Close_normalized'].values
+n_steps = 100
+n_features = 1
 X, y = prepare_data(data_for_lstm, n_steps)
 
-# Reshape X untuk sesuai dengan format input LSTM (jumlah sampel, jumlah time steps, jumlah fitur)
+# Reshape X to fit LSTM input format (samples, time steps, features)
 X = X.reshape((X.shape[0], X.shape[1], n_features))
 
-# Bangun model LSTM
+# Build LSTM model
 model = Sequential()
 model.add(Bidirectional(LSTM(300, activation='relu'), input_shape=(n_steps, n_features)))
 model.add(Dense(1))
 model.compile(optimizer='adam', loss='mse')
 
-# Muat berat model yang telah disimpan sebelumnya
+# Load pre-trained model weights
 model.load_weights(stock_symbol + ".h5")
 
-# Lakukan prediksi untuk 20 hari ke depan
+# Perform prediction for next 20 days
 predictions = []
 current_sequence = X[-1]
 
 for _ in range(20):
-    # Prediksi harga berikutnya
+    # Predict next price
     next_pred = model.predict(current_sequence.reshape(1, n_steps, n_features), verbose=0)
-    # Tambahkan prediksi ke daftar prediksi
+    # Add prediction to predictions list
     predictions.append(next_pred[0])
-    # Update urutan saat ini dengan menambahkan prediksi terbaru
+    # Update current sequence by appending the latest prediction
     current_sequence = np.append(current_sequence[1:], next_pred)
 
-# Denormalisasi prediksi untuk mendapatkan harga yang sebenarnya
+# Denormalize predictions to get actual prices
 predicted_prices = (predictions * (max_close - min_close)) + min_close
 
-# Plot hasil prediksi dan harga sebelumnya
+# Plot predicted and previous prices
 plt.figure(figsize=(20, 10))
 plt.plot(input_df.index[-80:], input_df['Close'][-80:], label='Previous')
 plt.plot(pd.date_range(start=input_df.index[-1], periods=20), predicted_prices, label='Prediction')
